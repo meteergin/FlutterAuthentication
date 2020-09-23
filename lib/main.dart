@@ -1,9 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:async';
 import 'dart:convert';
 
-const SERVER_IP = 'http://localhost:8080';
+import 'package:FlutterAuthentication/service/authentication_service.dart';
+import 'package:flutter/material.dart';
 
 void main() {
   runApp(MyApp());
@@ -32,14 +30,34 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthenticationService _authenticationService = AuthenticationService();
+  var idToken;
 
-  Future<String> attemptLogIn(String username, String password) async {
-    var response = await http.post(
-        Uri.encodeFull("$SERVER_IP/api/authenticate"),
-        body: json.encode({"username": username, "password": password}),
-        headers: {"content-type": "application/json"});
-    if (response.statusCode == 200) return response.body;
-    return null;
+  Future<void> _showMyDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap button!
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Alert'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Username or password is wrong!!!'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            FlatButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -62,7 +80,19 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async {
                   var username = _usernameController.text;
                   var password = _passwordController.text;
-                  var jwt = await attemptLogIn(username, password);
+                  idToken = null;
+                  try {
+                    var response = await _authenticationService.attemptLogIn(
+                        username, password);
+                    Map responseMap = jsonDecode(response);
+                    idToken = responseMap["id_token"];
+                  } catch (e) {}
+
+                  if (null == idToken) {
+                    _showMyDialog();
+                  }
+
+                  print(idToken);
                 },
                 child: Text("Log In")),
           ],
